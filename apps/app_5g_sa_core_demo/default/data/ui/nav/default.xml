@@ -1,4 +1,0 @@
-<nav search_view="search" color="#1B2A4A">
-  <view name="service_health_overview" default="true" />
-  <view name="operations_drilldown" />
-</nav>
