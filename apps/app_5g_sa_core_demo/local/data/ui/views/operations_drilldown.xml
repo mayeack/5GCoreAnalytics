@@ -1,0 +1,253 @@
+<form version="1.1" theme="dark">
+  <label>5G SA Core - Operations Drilldown</label>
+  <description>Investigate service degradations: correlate alerts, NF health, and KPIs to isolate root cause and accelerate triage.</description>
+  <!-- Row 1: Operational KPIs -->
+  <!-- Row 2: Alert and KPI Timelines -->
+  <!-- Row 3: NF Instance Analysis -->
+  <!-- Row 4: NF CPU and Subscriber Impact -->
+  <!-- Row 5: Incident Detail -->
+  <fieldset submitButton="false" autoRun="true">
+    <input type="time" token="time_range" searchWhenChanged="true">
+      <label>Time Range</label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="selected_region" searchWhenChanged="true">
+      <label>Region</label>
+      <choice value="*">All Regions</choice>
+      <default>*</default>
+      <search>
+        <query>index=fiveg_sa_core sourcetype="5g:nf:metrics" | dedup region | sort region | table region</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <fieldForLabel>region</fieldForLabel>
+      <fieldForValue>region</fieldForValue>
+    </input>
+    <input type="dropdown" token="selected_nf_type" searchWhenChanged="true">
+      <label>NF Type</label>
+      <choice value="*">All NF Types</choice>
+      <default>*</default>
+      <search>
+        <query>index=fiveg_sa_core sourcetype="5g:nf:metrics" | dedup nf_type | sort nf_type | table nf_type</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <fieldForLabel>nf_type</fieldForLabel>
+      <fieldForValue>nf_type</fieldForValue>
+    </input>
+    <input type="dropdown" token="selected_slice" searchWhenChanged="true">
+      <label>Slice</label>
+      <choice value="*">All Slices</choice>
+      <default>*</default>
+      <search>
+        <query>index=fiveg_sa_core sourcetype="5g:service:kpi" | dedup slice | sort slice | table slice</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <fieldForLabel>slice</fieldForLabel>
+      <fieldForValue>slice</fieldForValue>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <title>Avg Control Plane Latency</title>
+      <single>
+        <search>
+          <query>index=fiveg_sa_core sourcetype="5g:service:kpi" region="$selected_region$" slice="$selected_slice$"
+| stats avg(control_plane_latency_ms) as latency
+| eval latency=round(latency, 1)</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="field">latency</option>
+        <option name="numberPrecision">0.0</option>
+        <option name="rangeColors">["0x53a051","0xf8be34","0xdc4e41"]</option>
+        <option name="rangeValues">[30,80]</option>
+        <option name="underLabel">ms</option>
+        <option name="unit">ms</option>
+        <option name="useColors">1</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Packet Drop Rate</title>
+      <single>
+        <search>
+          <query>index=fiveg_sa_core sourcetype="5g:service:kpi" region="$selected_region$" slice="$selected_slice$"
+| stats avg(packet_drop_pct) as drops
+| eval drops=round(drops, 2)</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="field">drops</option>
+        <option name="numberPrecision">0.00</option>
+        <option name="rangeColors">["0x53a051","0xf8be34","0xdc4e41"]</option>
+        <option name="rangeValues">[0.5,2]</option>
+        <option name="underLabel">%</option>
+        <option name="unit">%</option>
+        <option name="useColors">1</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Session Success Rate</title>
+      <single>
+        <search>
+          <query>index=fiveg_sa_core sourcetype="5g:service:kpi" region="$selected_region$" slice="$selected_slice$"
+| stats avg(pdu_session_success_rate) as rate
+| eval rate=round(rate, 1)</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="field">rate</option>
+        <option name="numberPrecision">0.0</option>
+        <option name="rangeColors">["0xdc4e41","0xf8be34","0x53a051"]</option>
+        <option name="rangeValues">[95,99]</option>
+        <option name="underLabel">%</option>
+        <option name="unit">%</option>
+        <option name="useColors">1</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Open Alerts</title>
+      <single>
+        <search>
+          <query>index=fiveg_sa_core sourcetype="5g:core:alerts" region="$selected_region$" status=open
+| stats count as total</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="field">total</option>
+        <option name="numberPrecision">0</option>
+        <option name="rangeColors">["0x53a051","0xf8be34","0xdc4e41"]</option>
+        <option name="rangeValues">[0,5]</option>
+        <option name="underLabel">Open Alerts</option>
+        <option name="useColors">1</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Alert Timeline by Severity</title>
+      <chart>
+        <search>
+          <query>index=fiveg_sa_core sourcetype="5g:core:alerts" region="$selected_region$"
+| timechart span=1h count by severity</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="charting.axisTitleX.text">Time</option>
+        <option name="charting.axisTitleY.text">Alert Count</option>
+        <option name="charting.fieldColors">{"critical": 0xdc4e41, "high": 0xf8be34, "warning": 0xf1813f, "info": 0x53a051}</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>KPI Degradation Timeline</title>
+      <chart>
+        <search>
+          <query>index=fiveg_sa_core sourcetype="5g:service:kpi" region="$selected_region$" slice="$selected_slice$"
+| timechart span=1h avg(control_plane_latency_ms) as "Latency (ms)" avg(packet_drop_pct) as "Packet Drop %"</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="charting.axisTitleX.text">Time</option>
+        <option name="charting.axisTitleY.text">Value</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>NF Instance Health (Latest Status)</title>
+      <table>
+        <search>
+          <query>index=fiveg_sa_core sourcetype="5g:nf:metrics" region="$selected_region$" nf_type="$selected_nf_type$"
+| stats latest(nf_cpu_pct) as CPU latest(nf_memory_pct) as Memory latest(nf_status) as Status latest(error_rate_pct) as "Error %" latest(request_rate_per_sec) as "Req/s" by nf_type nf_instance region site
+| sort - "Error %"
+| rename nf_type as "NF Type" nf_instance as Instance region as Region site as Site</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">20</option>
+      </table>
+    </panel>
+    <panel>
+      <title>NF Error Rate Over Time</title>
+      <chart>
+        <search>
+          <query>index=fiveg_sa_core sourcetype="5g:nf:metrics" region="$selected_region$" nf_type="$selected_nf_type$"
+| timechart span=1h avg(error_rate_pct) by nf_instance</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="charting.axisTitleX.text">Time</option>
+        <option name="charting.axisTitleY.text">Error Rate %</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>NF CPU Utilization Over Time</title>
+      <chart>
+        <search>
+          <query>index=fiveg_sa_core sourcetype="5g:nf:metrics" region="$selected_region$" nf_type="$selected_nf_type$"
+| timechart span=1h avg(nf_cpu_pct) by nf_instance</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="charting.axisTitleX.text">Time</option>
+        <option name="charting.axisTitleY.text">CPU %</option>
+        <option name="charting.axisY.minimumNumber">0</option>
+        <option name="charting.axisY.maximumNumber">100</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Subscriber Experience Impact</title>
+      <chart>
+        <search>
+          <query>index=fiveg_sa_core sourcetype="5g:subscriber:experience" region="$selected_region$" slice="$selected_slice$"
+| timechart span=1h avg(service_quality_score) as "Quality Score" avg(avg_latency_ms) as "Subscriber Latency (ms)"</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="charting.axisTitleX.text">Time</option>
+        <option name="charting.axisTitleY.text">Value</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Incident Detail</title>
+      <table>
+        <search>
+          <query>index=fiveg_sa_core sourcetype="5g:core:alerts" region="$selected_region$"
+| sort - _time
+| eval Time=strftime(_time, "%Y-%m-%d %H:%M")
+| table Time severity nf_type nf_instance region site slice alert_name description kpi_name kpi_value threshold correlation_id status
+| rename severity as Severity nf_type as "NF Type" nf_instance as Instance region as Region site as Site slice as Slice alert_name as Alert description as Description kpi_name as KPI kpi_value as Value threshold as Threshold correlation_id as "Incident ID" status as Status</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">20</option>
+      </table>
+    </panel>
+  </row>
+</form>
