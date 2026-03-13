@@ -1,0 +1,3 @@
+This directory contains the sample data generator script.
+
+Run generate_sample_data.py to regenerate sample data in ../samples/.
