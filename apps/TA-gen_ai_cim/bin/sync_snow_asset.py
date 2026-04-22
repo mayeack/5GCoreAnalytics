@@ -51,27 +51,20 @@ except ImportError:
 import splunklib.client as client
 
 
-def setup_logging(log_name='sync_snow_asset'):
-    """Setup logging for the alert action.
-
-    Uses a named logger with its own FileHandler so that importers
-    (e.g. pull_snow_inventory) can configure independent log files
-    without being silently overridden by basicConfig.
-    """
+def setup_logging():
+    """Setup logging for the alert action"""
     import logging
-    _logger = logging.getLogger(log_name)
-    if not _logger.handlers:
-        _logger.setLevel(logging.INFO)
-        log_file = os.path.join(
-            os.environ.get('SPLUNK_HOME', '/opt/splunk'),
-            'var', 'log', 'splunk', '{}.log'.format(log_name))
-        handler = logging.FileHandler(log_file, mode='a')
-        handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
-        _logger.addHandler(handler)
-    return _logger
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s %(levelname)s %(message)s',
+        filename=os.path.join(os.environ.get('SPLUNK_HOME', '/opt/splunk'),
+                             'var', 'log', 'splunk', 'sync_snow_asset.log'),
+        filemode='a'
+    )
+    return logging.getLogger('sync_snow_asset')
 
 
-logger = setup_logging('sync_snow_asset')
+logger = setup_logging()
 
 
 def get_snow_config(session_key):
